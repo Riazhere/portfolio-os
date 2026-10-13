@@ -1,0 +1,56 @@
+@import "tailwindcss";
+@config "../../tailwind.config.js";
+
+::selection { background: #00f0ff; color: #020807; }
+html { scroll-behavior: smooth; }
+html { overflow-x: clip; }
+body { overflow-x: hidden; }
+@media (hover: hover) and (pointer: fine) and (min-width: 768px) {
+  body, a, button, input, textarea, [role="button"] { cursor: none; }
+}
+
+/* Ambient background */
+.aurora { position: fixed; inset: 0; pointer-events: none; z-index: -10;
+  background:
+    radial-gradient(60% 50% at 85% 0%, rgba(0,240,255,.14), transparent 60%),
+    radial-gradient(50% 45% at 0% 100%, rgba(0,255,170,.07), transparent 60%); }
+.grid-bg { position: fixed; inset: 0; pointer-events: none; z-index: -10;
+  background-image: linear-gradient(rgba(0,240,255,.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0,240,255,.05) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: radial-gradient(ellipse at 50% 40%, #000 15%, transparent 72%); }
+.bg-noise { position: fixed; inset: 0; pointer-events: none; z-index: 50; opacity: .03;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+
+/* Glass panel + HUD corner brackets + cursor spotlight */
+.glass { position: relative; background: linear-gradient(145deg, rgba(0,240,255,.06), rgba(255,255,255,.012));
+  border: 1px solid rgba(0,240,255,.13); transition: border-color .3s; }
+.glass:hover { border-color: rgba(0,240,255,.4); }
+.spot::before { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .3s;
+  background: radial-gradient(320px circle at var(--x, 50%) var(--y, 50%), rgba(0,240,255,.15), transparent 60%); }
+.spot:hover::before { opacity: 1; }
+.corners::after { content: ""; position: absolute; inset: -1px; pointer-events: none;
+  background:
+    linear-gradient(#00f0ff,#00f0ff) top left / 16px 1px no-repeat, linear-gradient(#00f0ff,#00f0ff) top left / 1px 16px no-repeat,
+    linear-gradient(#00f0ff,#00f0ff) top right / 16px 1px no-repeat, linear-gradient(#00f0ff,#00f0ff) top right / 1px 16px no-repeat,
+    linear-gradient(#00f0ff,#00f0ff) bottom left / 16px 1px no-repeat, linear-gradient(#00f0ff,#00f0ff) bottom left / 1px 16px no-repeat,
+    linear-gradient(#00f0ff,#00f0ff) bottom right / 16px 1px no-repeat, linear-gradient(#00f0ff,#00f0ff) bottom right / 1px 16px no-repeat; }
+
+/* Type helpers */
+.text-gradient { background: linear-gradient(180deg, #fff 10%, #8defff 60%, #00f0ff); -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 0 28px rgba(0,240,255,.25)); }
+.label { font-family: var(--font-space-mono), monospace; font-size: 11px; letter-spacing: .22em; text-transform: uppercase; color: #6b8580; }
+.outline-text { -webkit-text-stroke: 1px #00f0ff; color: transparent; }
+
+@keyframes marquee { to { transform: translateX(-50%); } }
+.marquee-track { animation: marquee 30s linear infinite; width: max-content; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .marquee-track { animation: none; } }
+
+/* Hidden scrollbars for swipe carousels */
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* GPU-friendly comet for section dividers; grid children may shrink */
+@keyframes comet { from { transform: translateX(-6rem); } to { transform: translateX(100vw); } }
+.comet { animation: comet 4.5s linear infinite; will-change: transform; }
+.grid > * { min-width: 0; }
+@media (prefers-reduced-motion: reduce) { .comet { animation: none; } }
