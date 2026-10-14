@@ -54,3 +54,21 @@ body { overflow-x: hidden; }
 .comet { animation: comet 4.5s linear infinite; will-change: transform; }
 .grid > * { min-width: 0; }
 @media (prefers-reduced-motion: reduce) { .comet { animation: none; } }
+
+/* Compositor-friendly looping animations (replace JS-driven loops) */
+@keyframes spin-cw { to { transform: rotate(360deg); } }
+@keyframes spin-ccw { to { transform: rotate(-360deg); } }
+.spin-a { animation: spin-cw var(--d, 30s) linear infinite; }
+.spin-b { animation: spin-ccw var(--d, 40s) linear infinite; }
+@keyframes pulse-x { from { transform: translateX(-12px); } to { transform: translateX(32px); } }
+.pulse-x { animation: pulse-x 1.4s linear infinite; }
+.edge-fade { -webkit-mask-image: linear-gradient(to right, transparent, #000 12%, #000 88%, transparent); mask-image: linear-gradient(to right, transparent, #000 12%, #000 88%, transparent); }
+
+/* Phones and weaker devices: drop the expensive decoration */
+@media (max-width: 767px), (hover: none) {
+  .bg-noise, .grid-bg { display: none; }
+  .corners::after, .spot::before { display: none; }
+  .edge-fade { -webkit-mask-image: none; mask-image: none; }
+}
+[data-lite] .bg-noise, [data-lite] .grid-bg, [data-lite] .corners::after, [data-lite] .spot::before { display: none; }
+[data-lite] .spin-a, [data-lite] .spin-b { animation: none; }

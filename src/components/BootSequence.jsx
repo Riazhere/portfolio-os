@@ -10,7 +10,7 @@ export default function BootSequence({ onComplete }) {
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
-    const t0 = performance.now(), D = 2900;
+    const t0 = performance.now(), D = window.innerWidth < 768 ? 1800 : 2900;
     let raf, to, done = false;
     const finish = () => { if (done) return; done = true; cancelAnimationFrame(raf); setPct(100); to = setTimeout(onComplete, 750); };
     const tick = (t) => {

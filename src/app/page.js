@@ -8,6 +8,10 @@ import BootSequence from "../components/BootSequence";
 import Hud, { SECTIONS } from "../components/Hud";
 import ProjectModal from "../components/ProjectModal";
 
+// "Lite" = phones, touch devices and weaker hardware: heavy effects are skipped
+const isLite = () => typeof window !== "undefined" && (window.matchMedia("(max-width: 767px), (pointer: coarse)").matches || (navigator.hardwareConcurrency || 8) <= 4 || (navigator.deviceMemory || 8) <= 4);
+const useLite = () => useState(isLite)[0];
+
 const Counter = ({ to, suffix = "", dec = 0 }) => {
   const ref = useRef(null);
   const inView = useInView(ref, { once: true });
@@ -39,22 +43,26 @@ const Reveal = ({ children, className = "" }) => (
     transition={{ duration: 0.7, ease: "easeOut" }} className={className}>{children}</motion.div>
 );
 
-const Wipe = ({ children, delay = 0 }) => (
-  <motion.div initial={{ clipPath: "inset(-30% 100% -30% -10%)" }} whileInView={{ clipPath: "inset(-30% -10% -30% -10%)" }}
-    viewport={{ once: true, margin: "-80px" }} transition={{ duration: 0.9, delay, ease: [0.7, 0, 0.2, 1] }}>{children}</motion.div>
-);
+const Wipe = ({ children, delay = 0 }) => {
+  const lite = useLite();
+  if (lite) return <div>{children}</div>;
+  return (
+    <motion.div initial={{ clipPath: "inset(-30% 100% -30% -10%)" }} whileInView={{ clipPath: "inset(-30% -10% -30% -10%)" }}
+      viewport={{ once: true, margin: "-80px" }} transition={{ duration: 0.9, delay, ease: [0.7, 0, 0.2, 1] }}>{children}</motion.div>
+  );
+};
 
 const Heading = ({ n, label, a, b }) => (
   <div className="relative mb-10 md:mb-14">
     <span className="absolute -top-8 right-0 text-[6rem] md:text-[9rem] font-bold leading-none outline-text opacity-[.12] select-none pointer-events-none" aria-hidden="true">{n}</span>
     <p className="label text-os-accent! mb-4"><Scramble text={`${n} / ${label}`.toUpperCase()} /></p>
-    <Wipe><h2 className="text-4xl md:text-6xl font-bold tracking-tight leading-[1.05] text-gradient">{a}</h2></Wipe>
-    <Wipe delay={0.15}><h2 className="text-4xl md:text-6xl font-bold tracking-tight leading-[1.05] text-os-textMuted">{b}</h2></Wipe>
+    <Wipe><h2 className="text-3xl sm:text-4xl md:text-6xl font-bold tracking-tight leading-[1.05] text-gradient">{a}</h2></Wipe>
+    <Wipe delay={0.15}><h2 className="text-3xl sm:text-4xl md:text-6xl font-bold tracking-tight leading-[1.05] text-os-textMuted">{b}</h2></Wipe>
   </div>
 );
 
 const Section = ({ id, children }) => (
-  <section id={id} className="md:min-h-screen py-20 md:py-28 flex flex-col justify-center">{children}</section>
+  <section id={id} className="md:min-h-screen py-14 md:py-28 flex flex-col justify-center">{children}</section>
 );
 
 const CIRCUIT = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' fill='none' stroke='%2300f0ff' stroke-width='1'%3E%3Cpath d='M0 30h40l10 10h30M60 0v50l10 10h50M20 120V80l10-10h40M90 120V90l10-10h20'/%3E%3Ccircle cx='40' cy='30' r='3'/%3E%3Ccircle cx='80' cy='40' r='3'/%3E%3Ccircle cx='70' cy='60' r='3'/%3E%3Ccircle cx='30' cy='70' r='3'/%3E%3Ccircle cx='100' cy='80' r='3'/%3E%3C/svg%3E")`;
@@ -62,7 +70,7 @@ const CIRCUIT = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/sv
 function NeuralField() {
   const ref = useRef(null);
   useEffect(() => {
-    const small = window.innerWidth < 900 || window.matchMedia("(pointer: coarse)").matches;
+    const small = isLite();
     if (small || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const c = ref.current, ctx = c.getContext("2d");
     const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
@@ -216,6 +224,8 @@ const Divider = ({ n, label }) => (
 
 function Cyborg() {
   const R = 125;
+  const lite = useLite();
+  const [live, setLive] = useState(false);
   const [locked, setLocked] = useState(false);
   const [ok, setOk] = useState(true);
   const [wet, setWet] = useState(false);
@@ -228,43 +238,44 @@ function Cyborg() {
   const mask2 = useMotionTemplate`radial-gradient(circle ${r2}px at ${x}px ${y}px, #000 62%, transparent 100%)`;
   const ringO = useTransform(r, [0, 90, 140, 400], [0, 1, 1, 0]);
   const ringX = useTransform(x, (v) => v - R), ringY = useTransform(y, (v) => v - R);
-  const grow = (t) => animate(r, t, { duration: 0.55, ease: "easeOut", onComplete: () => t === 0 && setWet(false) });
+  const grow = (t) => animate(r, t, { duration: 0.55, ease: "easeOut", onComplete: () => { if (t === 0) { setWet(false); setLive(false); } } });
   const move = (e) => { const b = e.currentTarget.getBoundingClientRect(); mx.set(e.clientX - b.left); my.set(e.clientY - b.top); };
-  const toggle = () => { setWet(true); setRip((n) => n + 1); setLocked(!locked); grow(locked ? R : 700); };
+  const toggle = () => { setLive(true); setWet(true); setRip((n) => n + 1); setLocked(!locked); grow(locked ? (lite ? 0 : R) : 700); };
   const sil = { WebkitMaskImage: `url(${p.portrait})`, maskImage: `url(${p.portrait})`, WebkitMaskSize: "contain", maskSize: "contain",
     WebkitMaskPosition: "center", maskPosition: "center", WebkitMaskRepeat: "no-repeat", maskRepeat: "no-repeat" };
   const fadeImg = "linear-gradient(to bottom,#000 66%,transparent 100%),linear-gradient(to right,transparent 0,#000 18%,#000 82%,transparent 100%)";
-  const fade = { WebkitMaskImage: fadeImg, maskImage: fadeImg, WebkitMaskComposite: "source-in", maskComposite: "intersect" };
+  const fadeLite = "linear-gradient(to bottom,#000 66%,transparent 100%)";
+  const fade = lite ? { WebkitMaskImage: fadeLite, maskImage: fadeLite } : { WebkitMaskImage: fadeImg, maskImage: fadeImg, WebkitMaskComposite: "source-in", maskComposite: "intersect" };
   const imgCls = "absolute inset-0 w-full h-full object-contain object-center select-none pointer-events-none";
   const grid = "linear-gradient(rgba(0,240,255,.14) 1px,transparent 1px),linear-gradient(90deg,rgba(0,240,255,.14) 1px,transparent 1px)";
 
   return (
     <div className="relative w-full h-full">
       {/* Liquid filter: applied ONLY to the grey background disc, never to the face */}
-      <svg width="0" height="0" className="absolute" aria-hidden="true"><defs>
+      {wet && !lite && <svg width="0" height="0" className="absolute" aria-hidden="true"><defs>
         <filter id="water" x="-15%" y="-15%" width="130%" height="130%">
           <feTurbulence type="fractalNoise" baseFrequency="0.012 0.02" numOctaves="2" seed="3" result="n">
             <animate attributeName="baseFrequency" dur="8s" values="0.012 0.02;0.022 0.012;0.012 0.02" repeatCount="indefinite" />
           </feTurbulence>
           <feDisplacementMap in="SourceGraphic" in2="n" scale="38" xChannelSelector="R" yChannelSelector="G" />
-        </filter></defs></svg>
+        </filter></defs></svg>}
 
-      <div className="absolute inset-0" onMouseMove={move} onMouseEnter={() => { setWet(true); !locked && grow(R); }} onMouseLeave={() => !locked && grow(0)} onClick={toggle}>
+      <div className="absolute inset-0" onMouseMove={move} onMouseEnter={() => { setLive(true); setWet(true); !locked && grow(R); }} onMouseLeave={() => !locked && grow(0)} onClick={toggle}>
         {/* Three rings, concentric with the portrait */}
         <div className="absolute inset-0 pointer-events-none">
           {[0, 1, 2].map((k) => (
-            <motion.div key={k} className={`absolute rounded-full border border-os-accent/25 ${k === 1 ? "border-dashed" : ""}`}
-              style={{ inset: `${k * 9}%` }} animate={{ rotate: k % 2 ? -360 : 360 }} transition={{ duration: 28 + k * 14, repeat: Infinity, ease: "linear" }}>
+            <div key={k} className={`absolute rounded-full border border-os-accent/25 ${k === 1 ? "border-dashed" : ""} ${k % 2 ? "spin-b" : "spin-a"}`} style={{ inset: `${k * 9}%`, "--d": `${28 + k * 14}s` }}>
               <i className="absolute -top-1 left-1/2 w-2 h-2 rounded-full bg-os-accent shadow-[0_0_14px_#00f0ff]" />
-            </motion.div>
+            </div>
           ))}
         </div>
         {ok ? (
           <>
             <div className="absolute inset-0" style={fade}>
-              <img src={p.portrait} alt={`Portrait of ${p.firstName} ${p.lastName}`} className={imgCls} onError={() => setOk(false)} />
+              <img src={p.portrait} alt={`Portrait of ${p.firstName} ${p.lastName}`} className={imgCls} decoding="async" onError={() => setOk(false)} />
+              {live && (<>
               {/* 1. grey, liquid-edged background disc */}
-              <div className="absolute inset-0 pointer-events-none" style={{ filter: wet ? "url(#water)" : "none" }}>
+              <div className="absolute inset-0 pointer-events-none" style={{ filter: wet && !lite ? "url(#water)" : "none" }}>
                 <motion.div className="absolute inset-0" style={{ WebkitMaskImage: mask, maskImage: mask, backgroundColor: "rgba(118,128,134,.6)", backgroundImage: grid, backgroundSize: "24px 24px" }} />
               </div>
               {/* 2. robotic version of the person (crisp, undistorted) */}
@@ -275,7 +286,9 @@ function Cyborg() {
                   style={{ ...sil, backgroundSize: "120px 120px, auto", backgroundImage: `${CIRCUIT}, repeating-linear-gradient(0deg, rgba(0,240,255,.3) 0 1px, transparent 1px 4px)` }} />
               <RobotFace f={p.face} />
               </motion.div>
+              </>)}
             </div>
+            {live && (<>
             <motion.div className="absolute top-0 left-0 rounded-full border border-os-accent/60 pointer-events-none" style={{ width: R * 2, height: R * 2, x: ringX, y: ringY, opacity: ringO }}>
               <i className="absolute left-1/2 top-0 h-3 w-px bg-os-accent" /><i className="absolute left-1/2 bottom-0 h-3 w-px bg-os-accent" />
               <i className="absolute top-1/2 left-0 w-3 h-px bg-os-accent" /><i className="absolute top-1/2 right-0 w-3 h-px bg-os-accent" />
@@ -283,6 +296,7 @@ function Cyborg() {
             <motion.div className="absolute top-0 left-0 pointer-events-none" style={{ width: R * 2, height: R * 2, x: ringX, y: ringY }}>
               {rip > 0 && <motion.span key={rip} className="absolute inset-0 rounded-full border-2 border-os-accent" initial={{ scale: 0.3, opacity: 0.9 }} animate={{ scale: 2.2, opacity: 0 }} transition={{ duration: 1, ease: "easeOut" }} />}
             </motion.div>
+            </>)}
           </>
         ) : (
           <div className="absolute inset-0 flex items-center justify-center text-7xl font-bold text-gradient">RI</div>
@@ -302,7 +316,7 @@ function HeroVisual() {
   });
   return (
     <div className="relative w-full max-w-[40rem] mx-auto md:aspect-[640/560] mb-10">
-      <div className="relative mx-auto w-[85%] aspect-square md:absolute md:w-[58%] md:left-0 md:top-[16.9%] md:mx-0"><Cyborg /></div>
+      <div className="relative mx-auto w-[78%] aspect-square md:absolute md:w-[58%] md:left-0 md:top-[16.9%] md:mx-0"><Cyborg /></div>
       <div className="md:hidden no-scrollbar flex overflow-x-auto snap-x snap-mandatory gap-3 -mx-6 px-6 mt-14 pb-2">
         {p.modules.map(([code, name, sub]) => (
           <div key={code} className="glass rounded-lg px-4 py-3 min-w-[58%] snap-center shrink-0">
@@ -344,19 +358,19 @@ function Hero() {
     <Section id="home">
       <div className="grid lg:grid-cols-[0.9fr_1.3fr] gap-10 items-center">
         <div>
-          <span className="label inline-flex items-center gap-2 border border-os-border rounded-full px-3 py-1.5 mb-8">
+          <span className="label inline-flex items-center gap-2 border border-os-border rounded-full px-3 py-1.5 mb-6 md:mb-8">
             <i className="w-1.5 h-1.5 rounded-full bg-os-accent animate-pulse" />{p.availability}
           </span>
           <p className="text-os-textMuted text-lg mb-2">Hi, I'm</p>
-          <h1 className="text-7xl md:text-8xl lg:text-[clamp(4.5rem,8.5vw,8rem)] font-bold tracking-tighter leading-[0.85] text-gradient">
+          <h1 className="text-6xl sm:text-7xl md:text-8xl lg:text-[clamp(4.5rem,8.5vw,8rem)] font-bold tracking-tighter leading-[0.85] text-gradient">
             {p.firstName}<br />{p.lastName}
           </h1>
           <h2 className="mt-8 text-xl md:text-2xl text-white">{p.title}</h2>
           <p className="label mt-2 text-os-accent!"><Scramble text={p.tagline} /></p>
           <p className="mt-6 max-w-md text-os-textMuted leading-relaxed">{p.intro}</p>
           <div className="grid grid-cols-2 gap-3 md:flex md:flex-wrap md:gap-4 mt-8 md:mt-10 text-sm font-medium">
-            <a href="#contact" className="text-center bg-os-accent text-os-bg px-7 py-3.5 rounded-full hover:shadow-[0_0_30px_rgba(0,240,255,.5)] transition-shadow">Hire me</a>
-            <a href="#portfolio" className="text-center border border-os-border px-7 py-3.5 rounded-full hover:border-os-accent transition-colors">View my work ↓</a>
+            <a href="#contact" className="text-center bg-os-accent text-os-bg px-4 py-2.5 md:px-7 md:py-3.5 text-[13px] md:text-sm rounded-full hover:shadow-[0_0_30px_rgba(0,240,255,.5)] transition-shadow">Hire me</a>
+            <a href="#portfolio" className="text-center border border-os-border px-4 py-2.5 md:px-7 md:py-3.5 text-[13px] md:text-sm rounded-full hover:border-os-accent transition-colors">View my work ↓</a>
           </div>
           <div className="grid grid-cols-3 divide-x divide-os-border md:divide-x-0 border border-os-border/70 bg-os-panel/40 rounded-xl py-4 md:border-0 md:bg-transparent md:rounded-none md:py-0 md:gap-6 xl:gap-10 mt-10 md:mt-14">
             {p.stats.map((s) => (
@@ -385,7 +399,7 @@ function About() {
           <a href={p.cv} download className="inline-flex items-center gap-2 text-os-accent text-sm mt-2 hover:text-white transition-colors"><Download size={16} /> Download CV</a>
         </Reveal>
         <Reveal>
-          <Panel className="p-8 grid grid-cols-2 gap-8">
+          <Panel className="p-5 md:p-8 grid grid-cols-2 gap-5 md:gap-8">
             {rows.map(([k, v]) => (
               <div key={k}><p className="label mb-1">{k}</p><p className="text-white text-sm break-all">{v}</p></div>
             ))}
@@ -401,6 +415,7 @@ function About() {
 
 function Arsenal() {
   const layers = p.layers, n = layers.length, gap = 46;
+  const lite = useLite();
   const [a, setA] = useState(0);
   const all = [...new Set(layers.flatMap((l) => l.items))];
   const grid = "linear-gradient(rgba(0,240,255,.12) 1px,transparent 1px),linear-gradient(90deg,rgba(0,240,255,.12) 1px,transparent 1px)";
@@ -411,15 +426,15 @@ function Arsenal() {
       <Heading n="03" label="Technology stack" a="A full stack," b="layer by layer." />
       <div className="grid lg:grid-cols-2 gap-8 items-center">
         {/* 3D exploded stack */}
-        <div className="relative h-[22rem] md:h-[30rem] flex items-center justify-center" style={{ perspective: "1400px" }} aria-hidden="true">
-          <motion.div className="relative w-48 h-48 md:w-64 md:h-64" style={{ transformStyle: "preserve-3d" }}
-            initial={{ rotateX: 58, rotateZ: -40 }} animate={{ rotateX: 58, rotateZ: [-40, -32, -40] }} transition={{ duration: 14, repeat: Infinity, ease: "easeInOut" }}>
+        <div className="relative h-[17rem] md:h-[30rem] flex items-center justify-center" style={{ perspective: "1400px" }} aria-hidden="true">
+          <motion.div className="relative w-40 h-40 md:w-64 md:h-64" style={{ transformStyle: "preserve-3d" }}
+            initial={{ rotateX: 58, rotateZ: -40 }} animate={{ rotateX: 58, rotateZ: lite ? -40 : [-40, -32, -40] }} transition={lite ? { duration: 0 } : { duration: 14, repeat: Infinity, ease: "easeInOut" }}>
             {layers.map((l, k) => {
               const on = k === a, lift = k < a ? 46 : on ? 14 : 0;
               const z = (n - 1 - k) * gap - ((n - 1) * gap) / 2 + lift;
               return (
                 <button key={l.name} tabIndex={-1} onClick={() => setA(k)} onMouseEnter={() => setA(k)}
-                  className={`absolute inset-0 rounded-2xl border transition-[transform,background-color,border-color,box-shadow] duration-500 ${on ? "border-os-accent bg-os-accent/15 shadow-[0_0_50px_rgba(0,240,255,.4)]" : "border-os-accent/25 bg-os-panel/80 hover:border-os-accent/60"}`}
+                  className={`absolute inset-0 rounded-2xl border transition-[transform,background-color,border-color,box-shadow] duration-500 ${on ? "border-os-accent bg-os-accent/15 shadow-[0_0_50px_rgba(0,240,255,.4)] max-md:shadow-none" : "border-os-accent/25 bg-os-panel/80 hover:border-os-accent/60"}`}
                   style={{ transform: `translateZ(${z}px)` }}>
                   <span className="absolute inset-0 rounded-2xl opacity-40" style={{ backgroundImage: grid, backgroundSize: "22px 22px" }} />
                   <span className="absolute inset-5 grid grid-cols-4 gap-3 content-start">
@@ -461,9 +476,9 @@ function Arsenal() {
         </div>
       </div>
 
-      <div className="mt-16 flex flex-col gap-3 overflow-hidden" style={{ WebkitMaskImage: edge, maskImage: edge }}>
+      <div className="mt-12 md:mt-16 flex flex-col gap-3 overflow-hidden edge-fade">
         {[0, 1].map((r) => (
-          <div key={r} className={`marquee-track flex ${r ? "[animation-direction:reverse]" : ""}`}>
+          <div key={r} className={`marquee-track flex ${r ? "[animation-direction:reverse] max-md:hidden" : ""}`}>
             {[...all, ...all].map((s, k) => <span key={k} className="shrink-0 mr-3 text-xs border border-os-border rounded-full px-4 py-1.5 text-os-textMuted">{s}</span>)}
           </div>
         ))}
@@ -479,7 +494,7 @@ function Services() {
       <div className="grid sm:grid-cols-2 gap-5">
         {p.services.map((s) => (
           <Reveal key={s.code}>
-            <Panel className="p-7 h-full">
+            <Panel className="p-5 md:p-7 h-full">
               <span className="absolute right-5 top-3 text-6xl font-bold outline-text opacity-20 select-none">{s.code}</span>
               <h3 className="text-xl font-bold text-white pr-16">{s.title}</h3>
               <p className="text-sm text-os-textMuted mt-3 leading-relaxed">{s.text}</p>
@@ -627,8 +642,8 @@ function Work({ onOpen }) {
           </div>
           <AnimatePresence mode="wait">
             <motion.div key={pr.id} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.25 }}
-              className="relative p-7 md:p-10 flex flex-col gap-7">
-              <span className="absolute right-6 top-2 text-[9rem] font-bold leading-none text-os-accent/[0.06] select-none pointer-events-none">{pr.id.replace(/\D/g, "")}</span>
+              className="relative p-5 md:p-10 flex flex-col gap-6 md:gap-7">
+              <span className="absolute right-6 top-2 text-[6rem] md:text-[9rem] font-bold leading-none text-os-accent/[0.06] select-none pointer-events-none">{pr.id.replace(/\D/g, "")}</span>
               {pr.award && <span className="self-start bg-os-accent text-os-bg text-[11px] font-bold px-3 py-1 rounded-full">{pr.award}</span>}
               <div className="relative max-w-xl">
                 <p className="label text-os-accent! mb-2">{pr.category}</p>
@@ -644,8 +659,7 @@ function Work({ onOpen }) {
                       <span className={`text-[11px] rounded px-2.5 py-1.5 border ${k === 0 || k === nodes.length - 1 ? "border-os-border text-os-textMuted" : "border-os-accent/50 bg-os-accent/5 text-white"}`}>{n}</span>
                       {k < nodes.length - 1 && (
                         <span className="relative w-8 h-px bg-os-accent/25 overflow-hidden mx-1">
-                          <motion.i className="absolute top-0 left-0 h-px w-3 bg-os-accent shadow-[0_0_6px_#00f0ff]" animate={{ x: [-12, 32] }}
-                            transition={{ repeat: Infinity, duration: 1.4, delay: k * 0.25, ease: "linear" }} />
+                          <i className="pulse-x absolute top-0 left-0 h-px w-3 bg-os-accent" style={{ animationDelay: `${k * 0.25}s` }} />
                         </span>
                       )}
                     </Fragment>
@@ -722,7 +736,7 @@ function Credentials() {
     <Section id="credentials">
       <Heading n="07" label="Credentials" a="Proof of work," b="learning and results." />
       <Reveal className="mb-6">
-        <Panel className="p-8 md:p-10 flex flex-col md:flex-row gap-6 md:items-center justify-between">
+        <Panel className="p-5 md:p-10 flex flex-col md:flex-row gap-6 md:items-center justify-between">
           <div className="max-w-2xl">
             <p className="label text-os-accent! mb-3">Reference · Haashes</p>
             <p className="text-xl md:text-2xl text-white leading-snug">“…demonstrated exceptional skills in designing and developing visually appealing and user-friendly web applications.”</p>
@@ -732,7 +746,7 @@ function Credentials() {
         </Panel>
       </Reveal>
       <div className="grid md:grid-cols-2 gap-6 mb-6">
-        <Reveal><Panel className="p-8 h-full">
+        <Reveal><Panel className="p-5 md:p-8 h-full">
           <p className="label mb-1">{e.degree}</p>
           <p className="text-white text-xl font-semibold">{e.school}</p>
           <p className="text-sm text-os-textMuted">{e.period} · CGPA {e.cgpa}</p>
@@ -750,7 +764,7 @@ function Credentials() {
             ))}
           </div>
         </Panel></Reveal>
-        <Reveal><Panel className="p-8 h-full flex flex-col gap-6">
+        <Reveal><Panel className="p-5 md:p-8 h-full flex flex-col gap-6">
           {e.earlier.map(([t, s, m]) => (
             <div key={t} className="flex justify-between gap-4 border-b border-os-border pb-4">
               <div><p className="text-white">{t}</p><p className="text-xs text-os-textMuted">{s}</p></div>
@@ -813,7 +827,7 @@ function Contact() {
           <a href={p.links.linkedin} target="_blank" rel="noreferrer" className="hover:text-os-accent transition-colors">LinkedIn ↗</a>
           <a href={p.links.github} target="_blank" rel="noreferrer" className="hover:text-os-accent transition-colors">GitHub ↗</a>
         </div>
-        <Panel className="p-7 flex flex-col gap-3">
+        <Panel className="p-5 md:p-7 flex flex-col gap-3">
           <p className="label">Quick transmission · opens your email app</p>
           <input className={field} placeholder="Your name" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} />
           <input className={field} type="email" placeholder="Email address" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} />
@@ -861,7 +875,7 @@ function Chat() {
   return (
     <>
       <button onClick={() => setOpen((o) => !o)} aria-label={open ? "Close AI assistant" : "Open AI assistant"}
-        className="fixed bottom-24 right-5 z-[140] w-14 h-14 rounded-full border border-os-accent/50 bg-os-bg flex items-center justify-center text-os-accent text-sm font-bold hover:shadow-[0_0_30px_rgba(0,240,255,.5)] transition-shadow">
+        className="fixed bottom-24 right-5 z-[140] w-12 h-12 md:w-14 md:h-14 rounded-full border border-os-accent/50 bg-os-bg flex items-center justify-center text-os-accent text-sm font-bold hover:shadow-[0_0_30px_rgba(0,240,255,.5)] transition-shadow">
         {!open && <span className="absolute inset-0 rounded-full border border-os-accent/60 animate-ping" />}
         <span className="relative">{open ? "×" : "AI"}</span>
       </button>
@@ -939,7 +953,8 @@ export default function Home() {
   const [booting, setBooting] = useState(true);
   const [open, setOpen] = useState(null);
   const { scrollYProgress } = useScroll();
-  const sx = useSpring(scrollYProgress, { stiffness: 120, damping: 25 });
+  const sx = scrollYProgress;
+  useEffect(() => { if (isLite()) document.documentElement.dataset.lite = "1"; }, []);
   return (
     <>
       <AnimatePresence>{booting && <BootSequence onComplete={() => setBooting(false)} />}</AnimatePresence>

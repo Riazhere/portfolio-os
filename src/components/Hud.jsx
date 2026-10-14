@@ -28,7 +28,7 @@ export default function Hud() {
     );
     SECTIONS.forEach(([id]) => { const el = document.getElementById(id); el && io.observe(el); });
     const mv = (e) => setPos({ x: e.clientX, y: e.clientY });
-    window.addEventListener("mousemove", mv);
+    if (window.matchMedia("(pointer: fine)").matches) window.addEventListener("mousemove", mv);
     return () => { io.disconnect(); window.removeEventListener("mousemove", mv); };
   }, []);
 
@@ -44,7 +44,7 @@ export default function Hud() {
           ))}
         </nav>
         <div className="flex items-center gap-3">
-          <a href="#contact" className="border border-os-accent text-os-accent px-3 py-1.5 uppercase tracking-widest hover:bg-os-accent hover:text-os-bg transition-colors">Let's connect</a>
+          <a href="#contact" className="border border-os-accent text-os-accent px-2.5 py-1 sm:px-3 sm:py-1.5 text-[10px] sm:text-xs uppercase tracking-widest hover:bg-os-accent hover:text-os-bg transition-colors">Let's connect</a>
           <button onClick={() => setMenu((m) => !m)} aria-label={menu ? "Close menu" : "Open menu"} aria-expanded={menu} className="xl:hidden w-9 h-9 flex flex-col items-center justify-center gap-1.5 border border-os-border rounded">
             <i className={`block w-4 h-px bg-white transition-transform ${menu ? "translate-y-[3.5px] rotate-45" : ""}`} />
             <i className={`block w-4 h-px bg-white transition-transform ${menu ? "-translate-y-[3.5px] -rotate-45" : ""}`} />
